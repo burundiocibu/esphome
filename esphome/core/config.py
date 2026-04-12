@@ -25,6 +25,7 @@ from esphome.const import (
     CONF_INCLUDES,
     CONF_INCLUDES_C,
     CONF_LIBRARIES,
+    CONF_LOOP_INTERVAL,
     CONF_MIN_VERSION,
     CONF_NAME,
     CONF_NAME_ADD_MAC_SUFFIX,
@@ -300,6 +301,9 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_LIBRARIES, default=[]): cv.ensure_list(cv.string_strict),
             cv.Optional(CONF_NAME_ADD_MAC_SUFFIX, default=False): cv.boolean,
             cv.Optional(CONF_DEBUG_SCHEDULER, default=False): cv.boolean,
+            cv.Optional(
+                CONF_LOOP_INTERVAL, default="16ms"
+            ): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_PROJECT): cv.Schema(
                 {
                     cv.Required(CONF_NAME): cv.All(
@@ -620,6 +624,8 @@ async def to_code(config: ConfigType) -> None:
     if name_add_mac_suffix:
         cg.add_define("ESPHOME_NAME_ADD_MAC_SUFFIX")
     cg.add(cg.App.pre_setup(name_expr, name_len, friendly_expr, friendly_len))
+    if (loop_interval := config.get(CONF_LOOP_INTERVAL, 16)) != 16:
+        cg.add(cg.App.set_loop_interval(loop_interval))
     # Define component count for static allocation
     cg.add_define("ESPHOME_COMPONENT_COUNT", len(CORE.component_ids))
 

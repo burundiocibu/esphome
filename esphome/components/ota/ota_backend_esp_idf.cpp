@@ -59,6 +59,8 @@ OTAResponseTypes IDFOTABackend::begin(size_t image_size) {
     }
     return OTA_RESPONSE_ERROR_UNKNOWN;
   }
+  esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "ota", &this->pm_lock_);
+  esp_pm_lock_acquire(this->pm_lock_);
   this->md5_.init();
   return OTA_RESPONSE_OK;
 }
@@ -92,6 +94,11 @@ OTAResponseTypes IDFOTABackend::end() {
   }
   esp_err_t err = esp_ota_end(this->update_handle_);
   this->update_handle_ = 0;
+  if (this->pm_lock_ != nullptr) {
+    esp_pm_lock_release(this->pm_lock_);
+    esp_pm_lock_delete(this->pm_lock_);
+    this->pm_lock_ = nullptr;
+  }
   if (err == ESP_OK) {
     err = esp_ota_set_boot_partition(this->partition_);
     if (err == ESP_OK) {
@@ -110,6 +117,11 @@ OTAResponseTypes IDFOTABackend::end() {
 void IDFOTABackend::abort() {
   esp_ota_abort(this->update_handle_);
   this->update_handle_ = 0;
+  if (this->pm_lock_ != nullptr) {
+    esp_pm_lock_release(this->pm_lock_);
+    esp_pm_lock_delete(this->pm_lock_);
+    this->pm_lock_ = nullptr;
+  }
 }
 
 }  // namespace ota
