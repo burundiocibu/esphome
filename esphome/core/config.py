@@ -624,7 +624,7 @@ async def to_code(config: ConfigType) -> None:
     if name_add_mac_suffix:
         cg.add_define("ESPHOME_NAME_ADD_MAC_SUFFIX")
     cg.add(cg.App.pre_setup(name_expr, name_len, friendly_expr, friendly_len))
-    if (loop_interval := config.get(CONF_LOOP_INTERVAL, 16)) != 16:
+    if (loop_interval := config[CONF_LOOP_INTERVAL]) != 16:
         cg.add(cg.App.set_loop_interval(loop_interval))
     # Define component count for static allocation
     cg.add_define("ESPHOME_COMPONENT_COUNT", len(CORE.component_ids))

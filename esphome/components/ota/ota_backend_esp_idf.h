@@ -27,6 +27,9 @@ class IDFOTABackend final {
   char expected_bin_md5_[32];
   bool md5_set_{false};
   esp_pm_lock_handle_t pm_lock_{nullptr};
+#if defined(USE_OPENTHREAD) && defined(CONFIG_OPENTHREAD_MTD)
+  uint32_t saved_poll_period_{0};
+#endif
 };
 
 std::unique_ptr<IDFOTABackend> make_ota_backend();

@@ -8,6 +8,13 @@
 #include <esp_task_wdt.h>
 #include <spi_flash_mmap.h>
 
+#if defined(USE_OPENTHREAD) && defined(CONFIG_OPENTHREAD_MTD)
+#include "esp_openthread.h"
+#include "esp_openthread_lock.h"
+#include <openthread/link.h>
+static constexpr uint32_t OTA_POLL_PERIOD_MS = 1000;
+#endif
+
 namespace esphome {
 namespace ota {
 
@@ -61,6 +68,16 @@ OTAResponseTypes IDFOTABackend::begin(size_t image_size) {
   }
   esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "ota", &this->pm_lock_);
   esp_pm_lock_acquire(this->pm_lock_);
+#if defined(USE_OPENTHREAD) && defined(CONFIG_OPENTHREAD_MTD)
+  if (esp_openthread_lock_acquire(100)) {
+    uint32_t current_period = otLinkGetPollPeriod(esp_openthread_get_instance());
+    if (current_period > OTA_POLL_PERIOD_MS) {
+      this->saved_poll_period_ = current_period;
+      otLinkSetPollPeriod(esp_openthread_get_instance(), OTA_POLL_PERIOD_MS);
+    }
+    esp_openthread_lock_release();
+  }
+#endif
   this->md5_.init();
   return OTA_RESPONSE_OK;
 }
@@ -99,6 +116,13 @@ OTAResponseTypes IDFOTABackend::end() {
     esp_pm_lock_delete(this->pm_lock_);
     this->pm_lock_ = nullptr;
   }
+#if defined(USE_OPENTHREAD) && defined(CONFIG_OPENTHREAD_MTD)
+  if (this->saved_poll_period_ > 0 && esp_openthread_lock_acquire(100)) {
+    otLinkSetPollPeriod(esp_openthread_get_instance(), this->saved_poll_period_);
+    this->saved_poll_period_ = 0;
+    esp_openthread_lock_release();
+  }
+#endif
   if (err == ESP_OK) {
     err = esp_ota_set_boot_partition(this->partition_);
     if (err == ESP_OK) {
@@ -122,6 +146,13 @@ void IDFOTABackend::abort() {
     esp_pm_lock_delete(this->pm_lock_);
     this->pm_lock_ = nullptr;
   }
+#if defined(USE_OPENTHREAD) && defined(CONFIG_OPENTHREAD_MTD)
+  if (this->saved_poll_period_ > 0 && esp_openthread_lock_acquire(100)) {
+    otLinkSetPollPeriod(esp_openthread_get_instance(), this->saved_poll_period_);
+    this->saved_poll_period_ = 0;
+    esp_openthread_lock_release();
+  }
+#endif
 }
 
 }  // namespace ota
