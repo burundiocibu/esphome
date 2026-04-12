@@ -134,6 +134,11 @@ def set_sdkconfig_options(config):
     # TODO: Add support for synchronized sleepy end devices (SSED)
     add_idf_sdkconfig_option(f"CONFIG_OPENTHREAD_{config.get(CONF_DEVICE_TYPE)}", True)
 
+    if config.get(CONF_LIGHT_SLEEP) and get_esp32_variant() == VARIANT_ESP32H2:
+        # ESP32-H2 USB Serial JTAG peripheral holds the BBPLL clock and prevents light sleep.
+        # Disable it so the chip can actually enter light sleep when a USB cable is connected.
+        add_idf_sdkconfig_option("CONFIG_USJ_ENABLE_USB_SERIAL_JTAG", False)
+
 
 openthread_ns = cg.esphome_ns.namespace("openthread")
 OpenThreadComponent = openthread_ns.class_("OpenThreadComponent", cg.Component)
